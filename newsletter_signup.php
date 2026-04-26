@@ -1,0 +1,3 @@
+<?php require_once __DIR__ . '/includes/db.php'; require_once __DIR__ . '/includes/functions.php';
+$email=filter_var($_POST['email'] ?? '', FILTER_VALIDATE_EMAIL); if($email){$st=db()->prepare('INSERT IGNORE INTO newsletter_signups(email,source) VALUES(?,?)');$st->execute([$email,'website']);}
+?><!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="assets/css/style.css"><title>Subscribed</title></head><body><section class="section"><div class="card"><h1>Thank you</h1><p>You are signed up for taosarts.org updates.</p><a class="btn" href="index.php">Back to home</a></div></section></body></html>

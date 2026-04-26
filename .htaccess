@@ -1,0 +1,14 @@
+Options -Indexes
+DirectoryIndex index.php index.html
+
+# Force HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Block access to sensitive directories
+RewriteRule ^(includes|database)(/|$) - [F,L]
+RewriteRule (^|/)\\. - [F,L]
+
+# Clean URL routing
+# /artist/display-name -> artist.php (future enhancement; id-based is current default)

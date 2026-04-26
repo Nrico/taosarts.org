@@ -1,0 +1,5 @@
+.DS_Store
+archive/
+examples/
+uploads/*
+!uploads/.gitkeep
