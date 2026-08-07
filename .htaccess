@@ -1,14 +1,15 @@
 Options -Indexes
 DirectoryIndex index.php index.html
 
-# Force HTTPS
+<IfModule mod_rewrite.c>
 RewriteEngine On
+
+# Force HTTPS outside localhost-style development hosts.
+RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
 RewriteCond %{HTTPS} off
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# Block access to sensitive directories
+# Block access to sensitive directories.
 RewriteRule ^(includes|database)(/|$) - [F,L]
 RewriteRule (^|/)\\. - [F,L]
-
-# Clean URL routing
-# /artist/display-name -> artist.php (future enhancement; id-based is current default)
+</IfModule>
