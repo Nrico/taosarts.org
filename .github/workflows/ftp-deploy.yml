@@ -1,0 +1,47 @@
+name: FTP Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+concurrency:
+  group: ftp-deploy
+  cancel-in-progress: false
+
+jobs:
+  ftp-deploy:
+    name: Deploy to taosarts.org
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          # If FTPS fails to connect on this host, switch to: ftp
+          local-dir: ./
+          # Adjust if the FTP account doesn't land directly in the
+          # domain's document root (e.g. "/public_html/" for an addon
+          # domain, or a subfolder cPanel gave you for taosarts.org).
+          server-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            database/**
+            docs/**
+            examples/**
+            archive/**
+            uploads/**
+            !uploads/.gitkeep
+            includes/config.local.php
+            includes/config.local.example.php
+            README.md
+            LICENSE

@@ -68,9 +68,30 @@ placeholder password. **Change it immediately after importing the
 schema on any environment reachable from the internet** — see
 "Changing the admin password" below.
 
-## Deploying to GoDaddy cPanel (Git Version Control)
+## Deploying to GoDaddy cPanel
 
-1. In cPanel, open **Git™ Version Control** → **Create**.
+Either method needs the same one-time database setup and production
+config file; they differ only in how files get from GitHub onto the
+server.
+
+1. In cPanel's **MySQL® Databases**, create a database and a user with
+   a strong password, and add that user to the database with all
+   privileges.
+2. In **phpMyAdmin**, import `database/schema.sql` into that new
+   database.
+3. In **File Manager**, create `includes/config.local.php` inside the
+   deployed copy (it's gitignored, so it never comes from Git or from
+   the FTP deploy) with the real production values — copy the shape
+   from `includes/config.local.example.php`, using the DB name/user/
+   password from step 1 and `TAOSARTS_BASE_URL` set to
+   `https://taosarts.org`.
+4. Make sure `uploads/` is writable by the web server user.
+5. Change the seeded admin password (below) before telling anyone the
+   site is live.
+
+### Option A: Git Version Control (manual deploys)
+
+6. In cPanel, open **Git™ Version Control** → **Create**.
    - Clone URL: this repo's GitHub URL.
    - Repository Path: your domain's document root (e.g.
      `/home/<cpanel-user>/public_html`, or the addon domain's folder)
@@ -78,22 +99,30 @@ schema on any environment reachable from the internet** — see
      matching `.htaccess`'s existing block on dotfile paths
      (`.git`, `.gitignore`, etc.) and on `includes/`/`database/`.
    - Branch: `main`.
-2. In cPanel's **MySQL® Databases**, create a database and a user with
-   a strong password, and add that user to the database with all
-   privileges.
-3. In **phpMyAdmin**, import `database/schema.sql` into that new
-   database.
-4. In **File Manager**, create `includes/config.local.php` inside the
-   deployed copy (it's gitignored, so it never comes from Git) with
-   the real production values — copy the shape from
-   `includes/config.local.example.php`, using the DB name/user/password
-   from step 2 and `TAOSARTS_BASE_URL` set to `https://taosarts.org`.
-5. Make sure `uploads/` is writable by the web server user.
-6. Change the seeded admin password (below) before telling anyone the
-   site is live.
 7. To ship a later update: push to `main` on GitHub, then in cPanel's
    Git Version Control, **Manage** the repo → **Update from Remote**,
    then **Deploy HEAD Commit**.
+
+### Option B: GitHub Actions FTP deploy (automatic)
+
+`.github/workflows/ftp-deploy.yml` pushes the repo to the server over
+FTPS on every push to `main`, using
+[SamKirkland/FTP-Deploy-Action](https://github.com/SamKirkland/FTP-Deploy-Action).
+It never deletes anything it didn't itself upload, so it's safe to run
+against a document root that already has `uploads/` or
+`config.local.php` sitting in it.
+
+6. In cPanel, open **FTP Accounts** and create (or reuse) an account
+   scoped to the domain's document root.
+7. In the GitHub repo's **Settings → Secrets and variables → Actions**,
+   add:
+   - `FTP_SERVER` — the FTP hostname for the account
+   - `FTP_USERNAME` — the FTP account's login
+   - `FTP_PASSWORD` — the FTP account's password
+8. Push to `main`. The workflow deploys automatically; check the
+   **Actions** tab for progress and logs.
+9. If the account's FTP root isn't already the domain's document root,
+   edit `server-dir` in the workflow file to match.
 
 ### Changing the admin password
 
