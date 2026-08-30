@@ -4,7 +4,11 @@ $active = 'stories';
 require_once __DIR__ . '/_layout.php';
 $pdo = db();
 
-$stories = $pdo->query("SELECT * FROM stories WHERE status='published' ORDER BY published_at DESC LIMIT 10")->fetchAll();
+// curate_homepage_feed() (includes/functions.php) guarantees at least one
+// contemporary and one historical story make the cut, not just strict
+// reverse-chronological — the newest overall still becomes the hero below,
+// only the remaining grid slots can be swapped for era representation.
+$stories = curate_homepage_feed($pdo, 10);
 $hero = array_shift($stories);
 ?>
 

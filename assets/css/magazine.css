@@ -73,6 +73,24 @@ body.mag{
 .type-pill.place{background:rgba(28,107,100,0.12);color:var(--teal)}
 .type-pill.tradition{background:rgba(75,107,82,0.12);color:var(--forest)}
 
+/* Secondary badges: era / place-category / recurring — outline style so
+   they stay visually subordinate to the primary type-pill above. */
+.era-pill{font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:9.5px;
+  font-weight:600;letter-spacing:.03em;padding:3px 9px;border-radius:999px;
+  display:inline-block;margin-top:6px;border:1px solid var(--line);color:var(--muted)}
+.era-pill.contemporary{border-color:var(--terracotta);color:var(--terracotta)}
+.era-pill.both{border-color:var(--sage);color:var(--sage)}
+.era-pill.gallery_studio{border-color:var(--teal);color:var(--teal)}
+.era-pill.recurring{border-color:var(--forest);color:var(--forest)}
+
+/* Entity index sub-filters (people/places/traditions) ------------------- */
+.filter-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.filter-tab{font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:12px;
+  font-weight:600;letter-spacing:.02em;padding:6px 14px;border-radius:999px;
+  border:1px solid var(--line);color:var(--muted);text-decoration:none}
+.filter-tab:hover{border-color:var(--ink);color:var(--ink)}
+.filter-tab.active{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+
 /* Hero ------------------------------------------------------------------ */
 .hero{margin:34px 56px 0;border-radius:12px;position:relative;overflow:hidden;
   box-shadow:var(--shadow-lg);min-height:420px;background:var(--muted)}

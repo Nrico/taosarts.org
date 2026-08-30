@@ -6,9 +6,11 @@ $pdo = db();
 $id = (int)($_GET['id'] ?? 0);
 
 $e = [
-    'type' => 'person', 'name' => '', 'slug' => '', 'one_line_id' => '',
+    'type' => 'person', 'era_status' => 'historical', 'name' => '', 'slug' => '', 'one_line_id' => '',
     'date_start' => '', 'date_end' => '',
-    'coordinates' => '', 'cadence' => '', 'portrait_image_id' => null, 'bio_markdown' => '',
+    'coordinates' => '', 'place_category' => '', 'cadence' => '', 'is_recurring' => 0,
+    'medium' => '', 'gallery_affiliation' => '', 'website_url' => '', 'instagram_url' => '',
+    'portrait_image_id' => null, 'bio_markdown' => '',
     'aliases' => '[]', 'keywords' => '[]',
 ];
 if ($id) {
@@ -54,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $values = [
         $_POST['type'],
+        $_POST['era_status'] ?: 'historical',
         $_POST['name'],
         $slug,
         $_POST['one_line_id'] ?: null,
@@ -62,16 +65,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_POST['date_start'] ?: null,
         $_POST['date_end'] ?: null,
         $_POST['coordinates'] ?: null,
+        $_POST['place_category'] ?: null,
         $_POST['cadence'] ?: null,
+        !empty($_POST['is_recurring']) ? 1 : 0,
+        $_POST['medium'] ?: null,
+        $_POST['gallery_affiliation'] ?: null,
+        $_POST['website_url'] ?: null,
+        $_POST['instagram_url'] ?: null,
         $portraitImageId ?: null,
         $_POST['bio_markdown'] ?: null,
     ];
 
     if ($id) {
-        $stmt = $pdo->prepare('UPDATE entities SET type=?,name=?,slug=?,one_line_id=?,aliases=?,keywords=?,date_start=?,date_end=?,coordinates=?,cadence=?,portrait_image_id=?,bio_markdown=? WHERE id=?');
+        $stmt = $pdo->prepare('UPDATE entities SET type=?,era_status=?,name=?,slug=?,one_line_id=?,aliases=?,keywords=?,date_start=?,date_end=?,coordinates=?,place_category=?,cadence=?,is_recurring=?,medium=?,gallery_affiliation=?,website_url=?,instagram_url=?,portrait_image_id=?,bio_markdown=? WHERE id=?');
         $values[] = $id;
     } else {
-        $stmt = $pdo->prepare('INSERT INTO entities (type,name,slug,one_line_id,aliases,keywords,date_start,date_end,coordinates,cadence,portrait_image_id,bio_markdown) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt = $pdo->prepare('INSERT INTO entities (type,era_status,name,slug,one_line_id,aliases,keywords,date_start,date_end,coordinates,place_category,cadence,is_recurring,medium,gallery_affiliation,website_url,instagram_url,portrait_image_id,bio_markdown) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     }
     $stmt->execute($values);
     redirect('entities.php');
@@ -90,6 +99,13 @@ $images = $pdo->query('SELECT id, credit_text FROM images ORDER BY created_at DE
           <?php endforeach; ?>
         </select>
       </div>
+      <div class="form-row"><label>Era</label>
+        <select name="era_status">
+          <?php foreach (['historical' => 'Historical', 'contemporary' => 'Contemporary', 'both' => 'Both'] as $val => $label): ?>
+          <option value="<?= $val ?>" <?= $e['era_status'] === $val ? 'selected' : '' ?>><?= $label ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
       <div class="form-row"><label>Name</label><input name="name" required value="<?= h($e['name']) ?>"></div>
       <div class="form-row"><label>Slug</label><input name="slug" value="<?= h($e['slug']) ?>" placeholder="auto from name if blank"></div>
       <div class="form-row"><label>One-line ID</label><input name="one_line_id" value="<?= h($e['one_line_id']) ?>" placeholder="Short description for cards and profile headers"></div>
@@ -100,7 +116,17 @@ $images = $pdo->query('SELECT id, credit_text FROM images ORDER BY created_at DE
       <div class="form-row type-field type-person" style="display:none"><label>Born</label><input name="date_start" value="<?= h($e['date_start']) ?>" placeholder="e.g. 1902"></div>
       <div class="form-row type-field type-person" style="display:none"><label>Died (blank if unknown/living)</label><input name="date_end" value="<?= h($e['date_end']) ?>" placeholder="e.g. 1953"></div>
       <div class="form-row type-field type-place" style="display:none"><label>Coordinates</label><input name="coordinates" value="<?= h($e['coordinates']) ?>" placeholder="lat,lng"></div>
+      <div class="form-row type-field type-place" style="display:none"><label>Place category</label>
+        <select name="place_category">
+          <option value="">— not set —</option>
+          <option value="historic_site" <?= $e['place_category'] === 'historic_site' ? 'selected' : '' ?>>Historic site / museum</option>
+          <option value="gallery_studio" <?= $e['place_category'] === 'gallery_studio' ? 'selected' : '' ?>>Gallery / studio</option>
+        </select>
+      </div>
       <div class="form-row type-field type-tradition" style="display:none"><label>Cadence</label><input name="cadence" value="<?= h($e['cadence']) ?>" placeholder="e.g. Seasonal, tied to plant harvests"></div>
+      <div class="form-row type-field type-tradition" style="display:none">
+        <label><input type="checkbox" name="is_recurring" value="1" <?= !empty($e['is_recurring']) ? 'checked' : '' ?>> Recurring — held annually/regularly</label>
+      </div>
       <div class="form-row"><label>Portrait image</label>
         <select name="portrait_image_id">
           <option value="">— none —</option>
@@ -127,6 +153,21 @@ $images = $pdo->query('SELECT id, credit_text FROM images ORDER BY created_at DE
       </div>
     </div>
   </details>
+
+  <div class="type-field type-person" style="display:none">
+    <h2 style="margin-top:22px">Living artist details (optional)</h2>
+    <p style="color:#685f54;font-size:13px;margin-top:-8px">Leave blank for a historical figure. The one-line ID above doubles as the short line on their practice.</p>
+    <div class="split">
+      <div>
+        <div class="form-row"><label>Medium</label><input name="medium" value="<?= h($e['medium']) ?>" placeholder="e.g. Painter, Weaver, Santero"></div>
+        <div class="form-row"><label>Gallery affiliation</label><input name="gallery_affiliation" value="<?= h($e['gallery_affiliation']) ?>" placeholder="e.g. Wilder Nightingale Fine Art"></div>
+      </div>
+      <div>
+        <div class="form-row"><label>Website</label><input name="website_url" value="<?= h($e['website_url']) ?>" placeholder="https://…"></div>
+        <div class="form-row"><label>Instagram</label><input name="instagram_url" value="<?= h($e['instagram_url']) ?>" placeholder="https://instagram.com/…"></div>
+      </div>
+    </div>
+  </div>
 
   <div class="form-row"><label>Bio (Markdown)</label><textarea name="bio_markdown" style="min-height:220px"><?= h($e['bio_markdown']) ?></textarea></div>
   <button class="btn">Save entity</button>

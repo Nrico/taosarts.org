@@ -50,6 +50,10 @@ CREATE TABLE images (
 CREATE TABLE entities (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   type ENUM('person','place','tradition') NOT NULL,
+  -- Historical/contemporary/both — independent of `type`. A living artist
+  -- is still type='person'; this is what actually distinguishes them from
+  -- a historical figure. See database/migrations/002_content_model_expansion.sql.
+  era_status ENUM('historical','contemporary','both') NOT NULL DEFAULT 'historical',
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NOT NULL UNIQUE,
   one_line_id VARCHAR(255),
@@ -58,14 +62,30 @@ CREATE TABLE entities (
   date_start VARCHAR(50),
   date_end VARCHAR(50),
   coordinates VARCHAR(100),
+  -- Only meaningful when type='place': historic sites/museums vs. active,
+  -- visitable galleries and studios.
+  place_category ENUM('historic_site','gallery_studio') NULL,
   cadence VARCHAR(100),
+  -- Only meaningful when type='tradition': a queryable flag for "this is
+  -- practiced annually/recurringly," separate from cadence's free-text
+  -- human description (e.g. "Annual, every July").
+  is_recurring TINYINT(1) NOT NULL DEFAULT 0,
+  -- Living-artist profile fields, only meaningful when type='person' and
+  -- era_status is contemporary/both. one_line_id doubles as "a short line
+  -- on their practice" — no separate column for that.
+  medium VARCHAR(255) NULL,
+  gallery_affiliation VARCHAR(255) NULL,
+  website_url VARCHAR(500) NULL,
+  instagram_url VARCHAR(500) NULL,
   portrait_image_id INT UNSIGNED,
   bio_markdown TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (portrait_image_id) REFERENCES images(id) ON DELETE SET NULL,
   INDEX (type),
-  INDEX (slug)
+  INDEX (slug),
+  INDEX (era_status),
+  INDEX (place_category)
 );
 
 CREATE TABLE story_ideas (
@@ -102,6 +122,11 @@ CREATE TABLE stories (
   body_markdown LONGTEXT NOT NULL,
   spark_url VARCHAR(1000),
   spark_source VARCHAR(255),
+  -- Which year's occurrence this story covers, for a recurring tradition
+  -- (e.g. 2026 for "Fiestas 2026"). NULL for an ordinary one-off story —
+  -- this is a label, not a workflow change; year-over-year coverage is
+  -- just multiple ordinary stories linked to the same tradition entity.
+  coverage_year YEAR NULL,
   -- Which linked entity (via story_entities) this story is actually about,
   -- for the card grid's color-coded type tag. Not derivable from
   -- story_entities alone (it's an unordered set) — an editor picks it

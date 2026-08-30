@@ -96,6 +96,55 @@ function require_api_token(PDO $pdo): int {
 
 // ---- Public front-end helpers -------------------------------------------
 
+// Homepage feed curation: pulls a larger reverse-chronological pool, then
+// guarantees at least one contemporary/both and one historical/both story
+// (by primary_entity_id's era_status) appear in the returned set — pulling
+// the best (most recent) match forward and swapping out the current oldest
+// slot if recency alone wouldn't include one. Degrades to plain
+// reverse-chron if one side has no published stories at all yet (e.g. a
+// fresh install, or before any living-artist story exists).
+function curate_homepage_feed(PDO $pdo, int $total = 10): array {
+    $poolSize = (int)max($total * 3, 24);
+    $pool = $pdo->query(
+        "SELECT s.*, e.era_status AS primary_era_status
+         FROM stories s LEFT JOIN entities e ON e.id = s.primary_entity_id
+         WHERE s.status = 'published'
+         ORDER BY s.published_at DESC
+         LIMIT $poolSize"
+    )->fetchAll();
+
+    if (count($pool) <= $total) {
+        return $pool;
+    }
+
+    $shown = array_slice($pool, 0, $total);
+
+    foreach ([['contemporary', 'both'], ['historical', 'both']] as $wantedEras) {
+        $present = false;
+        foreach ($shown as $row) {
+            if (in_array($row['primary_era_status'], $wantedEras, true)) { $present = true; break; }
+        }
+        if ($present) continue;
+
+        foreach ($pool as $candidate) {
+            $alreadyShown = false;
+            foreach ($shown as $row) {
+                if ($row['id'] === $candidate['id']) { $alreadyShown = true; break; }
+            }
+            if ($alreadyShown || !in_array($candidate['primary_era_status'], $wantedEras, true)) continue;
+
+            // Swap in for the current oldest slot, then re-sort so the
+            // set stays reverse-chronological other than this one swap.
+            array_pop($shown);
+            $shown[] = $candidate;
+            usort($shown, fn($a, $b) => strtotime($b['published_at']) <=> strtotime($a['published_at']));
+            break;
+        }
+    }
+
+    return $shown;
+}
+
 function story_primary_image(PDO $pdo, int $storyId): ?array {
     $stmt = $pdo->prepare(
         'SELECT i.* FROM story_images si JOIN images i ON i.id = si.image_id
@@ -160,7 +209,10 @@ function render_story_card(PDO $pdo, array $story): string {
         <?php if ($primary): ?><span class="type-tag <?= h($primary['type']) ?>"><?= h($primary['type']) ?></span><?php endif; ?>
       </div>
       <div class="card-body">
-        <div class="card-title"><a href="story.php?slug=<?= h($story['slug']) ?>"><?= h($story['title']) ?></a></div>
+        <div class="card-title">
+          <?php if (!empty($story['coverage_year'])): ?><span class="era-pill recurring"><?= h($story['coverage_year']) ?></span><?php endif; ?>
+          <a href="story.php?slug=<?= h($story['slug']) ?>"><?= h($story['title']) ?></a>
+        </div>
         <div class="card-dek"><?= h($story['dek']) ?></div>
         <?php if ($tagsByType):
           $metaParts = [];
@@ -187,6 +239,23 @@ function entity_meta_line(array $e): ?string {
     }
     if ($e['type'] === 'tradition' && $e['cadence']) {
         return $e['cadence'];
+    }
+    return null;
+}
+
+// Small secondary badge shown next to entity_meta_line()'s existing
+// dates/cadence line — only when there's something worth calling out
+// (a living artist, a gallery/studio, a recurring tradition), not on
+// every historical/historic-site/one-off row that's already the default.
+function entity_sub_label(array $e): ?string {
+    if ($e['type'] === 'person' && in_array($e['era_status'] ?? 'historical', ['contemporary', 'both'], true)) {
+        return $e['era_status'] === 'both' ? 'Historical & Contemporary' : 'Contemporary';
+    }
+    if ($e['type'] === 'place' && ($e['place_category'] ?? '') === 'gallery_studio') {
+        return 'Gallery / Studio';
+    }
+    if ($e['type'] === 'tradition' && !empty($e['is_recurring'])) {
+        return 'Recurring';
     }
     return null;
 }

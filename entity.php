@@ -42,6 +42,9 @@ $stories = $stories->fetchAll();
   </div>
   <div class="entity-main">
     <span class="type-pill <?= h($e['type']) ?>"><?= h(entity_type_label($e['type'])) ?></span>
+    <?php if ($subLabel = entity_sub_label($e)):
+        $subClass = $e['type'] === 'place' ? $e['place_category'] : ($e['type'] === 'tradition' ? 'recurring' : $e['era_status']);
+    ?><span class="era-pill <?= h($subClass) ?>"><?= h($subLabel) ?></span><?php endif; ?>
     <h1 class="entity-name"><?= h($e['name']) ?></h1>
     <?php if ($e['one_line_id']): ?><p class="entity-oneliner"><?= h($e['one_line_id']) ?></p><?php endif; ?>
     <?php if ($e['date_start'] || $e['date_end']): ?>
@@ -50,6 +53,19 @@ $stories = $stories->fetchAll();
     <?php if ($e['cadence']): ?><p class="entity-dates"><?= h($e['cadence']) ?></p><?php endif; ?>
     <?php if ($e['coordinates']): ?>
     <p class="entity-dates"><?= h($e['coordinates']) ?> &middot; <a href="https://www.google.com/maps?q=<?= h($e['coordinates']) ?>" target="_blank" rel="noopener">View on map</a></p>
+    <?php endif; ?>
+    <?php if ($e['type'] === 'person' && ($e['medium'] || $e['gallery_affiliation'] || $e['website_url'] || $e['instagram_url'])): ?>
+    <div class="entity-practice" style="margin-top:14px;">
+      <?php if ($e['medium']): ?><p class="entity-dates"><?= h($e['medium']) ?></p><?php endif; ?>
+      <?php if ($e['gallery_affiliation']): ?><p class="entity-dates">Represented by <?= h($e['gallery_affiliation']) ?></p><?php endif; ?>
+      <?php if ($e['website_url'] || $e['instagram_url']): ?>
+      <p class="entity-dates">
+        <?php if ($e['website_url']): ?><a href="<?= h($e['website_url']) ?>" target="_blank" rel="noopener">Website</a><?php endif; ?>
+        <?php if ($e['website_url'] && $e['instagram_url']): ?> &middot; <?php endif; ?>
+        <?php if ($e['instagram_url']): ?><a href="<?= h($e['instagram_url']) ?>" target="_blank" rel="noopener">Instagram</a><?php endif; ?>
+      </p>
+      <?php endif; ?>
+    </div>
     <?php endif; ?>
   </div>
 </div>
@@ -68,7 +84,10 @@ $stories = $stories->fetchAll();
     <div class="row-item">
       <div class="row-date"><?= h(format_published_date($s['published_at'])) ?></div>
       <div>
-        <a class="row-title" href="story.php?slug=<?= h($s['slug']) ?>"><?= h($s['title']) ?></a>
+        <a class="row-title" href="story.php?slug=<?= h($s['slug']) ?>">
+          <?php if ($s['coverage_year']): ?><span class="era-pill recurring" style="margin-top:0;margin-right:6px;"><?= h($s['coverage_year']) ?></span><?php endif; ?>
+          <?= h($s['title']) ?>
+        </a>
         <div class="row-dek"><?= h($s['dek']) ?></div>
       </div>
     </div>
