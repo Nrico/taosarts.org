@@ -1,6 +1,13 @@
 Options -Indexes
 DirectoryIndex index.php index.html
 
+# Many Apache setups (including some cPanel/shared-hosting PHP handlers)
+# don't pass the Authorization header through to PHP by default. This
+# doesn't depend on mod_rewrite, so it works even where that's disabled.
+<IfModule mod_setenvif.c>
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 <IfModule mod_rewrite.c>
 RewriteEngine On
 

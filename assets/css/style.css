@@ -465,6 +465,16 @@ main{display:block}
   margin-bottom:16px;
 }
 
+/* Base rule was missing entirely — only the mobile override (further down,
+   forcing 1 column) existed, so every two-column admin form was silently
+   rendering as one column on desktop too. */
+.split{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  align-items:start;
+}
+
 label{
   color:var(--ink);
   font-size:13px;
@@ -485,6 +495,19 @@ input,textarea,select{
 
 input::placeholder,textarea::placeholder{color:#8a7f73}
 textarea{min-height:120px}
+
+/* The width:100%/padded-box treatment above is meant for text inputs; a
+   checkbox or radio inheriting it stretches into a full-width bordered box
+   instead of a small control, so it needs its own reset. */
+input[type="checkbox"],input[type="radio"]{
+  width:auto;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:none;
+  margin:0 8px 0 0;
+  vertical-align:middle;
+}
 
 .collection-section{
   padding-top:26px;
@@ -700,6 +723,27 @@ figcaption{
   font-size:14px;
   vertical-align:top;
 }
+
+/* Flagged by the <img>'s onerror handler when its URL doesn't actually
+   load, so a broken image is obvious in the library list at a glance. */
+.table img.broken{
+  opacity:.25;
+  outline:2px solid #9d2d20;
+  outline-offset:-2px;
+}
+
+/* A destructive row action that needs to be a <button> (to submit a
+   hidden field), styled to match a plain table-row <a> link exactly —
+   same size as "Edit", just colored to signal it's not reversible. */
+.link-btn{
+  background:none;
+  border:none;
+  padding:0;
+  font:inherit;
+  color:#9d2d20;
+  cursor:pointer;
+}
+.link-btn:hover{text-decoration:underline}
 
 .actions{
   display:flex;

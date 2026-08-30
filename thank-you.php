@@ -1,1 +1,0 @@
-<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="assets/css/style.css"><title>Thank you</title></head><body><section class="section"><div class="card"><h1>Thank you</h1><p>Your response has been saved.</p><a class="btn" href="index.php">Back to home</a></div></section></body></html>
