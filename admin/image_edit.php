@@ -11,6 +11,20 @@ $stmt->execute([$id]);
 $img = $stmt->fetch();
 if (!$img) redirect('images.php');
 
+$usage = $pdo->prepare(
+    'SELECT (SELECT COUNT(*) FROM story_images WHERE image_id = ?) story_count,
+            (SELECT COUNT(*) FROM entities WHERE portrait_image_id = ?) portrait_count'
+);
+$usage->execute([$id, $id]);
+$usage = $usage->fetch();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+    // FKs handle cleanup: entities.portrait_image_id -> SET NULL,
+    // story_images row -> CASCADE. Nothing is left dangling.
+    $pdo->prepare('DELETE FROM images WHERE id = ?')->execute([$id]);
+    redirect('images.php?deleted=1');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $focalX = max(0, min(100, (int)($_POST['focal_x'] ?? 50)));
     $focalY = max(0, min(100, (int)($_POST['focal_y'] ?? 50)));
@@ -47,8 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="panel" style="flex:1">
     <h2>Focal point</h2>
     <p style="color:#685f54;font-size:13px">Click where the subject is. Used as the crop center wherever this image gets cropped into a card or hero.</p>
+    <p id="broken-note" style="display:none;color:#9d2d20;font-size:13px">⚠ This image's URL didn't load — the site would show a broken image wherever it's used. Fix the URL above and save, or delete it below.</p>
     <div id="focal-picker" style="position:relative;cursor:crosshair;max-width:100%;">
-      <img id="focal-img" src="<?= h($img['url']) ?>" alt="" style="width:100%;display:block;border-radius:6px">
+      <img id="focal-img" src="<?= h($img['url']) ?>" alt="" style="width:100%;display:block;border-radius:6px" onerror="document.getElementById('broken-note').style.display='block'">
       <div id="focal-marker" style="position:absolute;width:18px;height:18px;border-radius:50%;background:#b4572f;border:2px solid white;box-shadow:0 0 0 1px rgba(0,0,0,.3);transform:translate(-50%,-50%);pointer-events:none;left:<?= (int)$img['focal_x'] ?>%;top:<?= (int)$img['focal_y'] ?>%"></div>
     </div>
 
@@ -56,6 +71,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div id="crop-preview" style="height:160px;border-radius:8px;border:1px solid var(--line);background-image:url('<?= h($img['url']) ?>');background-size:cover;background-position:<?= (int)$img['focal_x'] ?>% <?= (int)$img['focal_y'] ?>%"></div>
   </div>
 </div>
+
+<?php
+$usedText = (int)$usage['story_count'] . ' stor' . ($usage['story_count'] == 1 ? 'y' : 'ies');
+if ($usage['portrait_count']) $usedText .= ', ' . (int)$usage['portrait_count'] . ' portrait' . ($usage['portrait_count'] == 1 ? '' : 's');
+$inUse = $usage['story_count'] > 0 || $usage['portrait_count'] > 0;
+$confirmMsg = $inUse
+    ? "Delete this image? It's used in $usedText — deleting it removes it from every story and clears any entity portrait using it. This can't be undone."
+    : "Delete this image? This can't be undone.";
+?>
+<section class="panel" style="margin-top:24px;border-color:#9d2d20">
+  <h2>Delete this image</h2>
+  <p style="color:#685f54;font-size:13px">Currently used in <?= h($usedText) ?>.<?php if ($inUse): ?> Deleting it removes it from those stories and clears any entity portrait using it — they aren't deleted themselves, just left without this image.<?php endif; ?></p>
+  <form method="post" onsubmit="return confirm(<?= h(json_encode($confirmMsg)) ?>);">
+    <input type="hidden" name="action" value="delete">
+    <button class="btn alt">Delete image</button>
+  </form>
+</section>
 
 <?php require __DIR__ . '/_footer.php'; ?>
 

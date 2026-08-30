@@ -724,6 +724,27 @@ figcaption{
   vertical-align:top;
 }
 
+/* Flagged by the <img>'s onerror handler when its URL doesn't actually
+   load, so a broken image is obvious in the library list at a glance. */
+.table img.broken{
+  opacity:.25;
+  outline:2px solid #9d2d20;
+  outline-offset:-2px;
+}
+
+/* A destructive row action that needs to be a <button> (to submit a
+   hidden field), styled to match a plain table-row <a> link exactly —
+   same size as "Edit", just colored to signal it's not reversible. */
+.link-btn{
+  background:none;
+  border:none;
+  padding:0;
+  font:inherit;
+  color:#9d2d20;
+  cursor:pointer;
+}
+.link-btn:hover{text-decoration:underline}
+
 .actions{
   display:flex;
   gap:8px;
