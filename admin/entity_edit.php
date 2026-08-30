@@ -17,6 +17,14 @@ if ($id) {
     if ($found) $e = $found;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete' && $id) {
+    // FKs handle cleanup: story_entities row -> CASCADE; stories.primary_
+    // entity_id and story_ideas.matched_entity_id -> SET NULL. A story that
+    // had this as its primary entity just loses that tag.
+    $pdo->prepare('DELETE FROM entities WHERE id = ?')->execute([$id]);
+    redirect('entities.php?deleted=1');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $portraitImageId = $_POST['portrait_image_id'] ?: null;
 
@@ -139,6 +147,25 @@ $linkedStories = $linkedStories->fetchAll();
     <?php endforeach; ?>
   </table>
   <?php endif; ?>
+</section>
+
+<?php
+$primaryCount = $pdo->prepare('SELECT COUNT(*) c FROM stories WHERE primary_entity_id = ?');
+$primaryCount->execute([$id]);
+$primaryCount = (int)$primaryCount->fetch()['c'];
+$usedText = count($linkedStories) . ' stor' . (count($linkedStories) == 1 ? 'y' : 'ies');
+$inUse = count($linkedStories) > 0 || $primaryCount > 0;
+$confirmMsg = $inUse
+    ? "Delete \"{$e['name']}\"? It's linked to $usedText" . ($primaryCount ? " ($primaryCount as the primary entity)" : "") . " — deleting it unlinks it from those stories without deleting them. This can't be undone."
+    : "Delete \"{$e['name']}\"? This can't be undone.";
+?>
+<section class="panel" style="margin-top:24px;border-color:#9d2d20">
+  <h2>Delete this entity</h2>
+  <p style="color:#685f54;font-size:13px">Stories linked to it aren't deleted — they're just unlinked (and lose it as their primary entity, if it was).</p>
+  <form method="post" onsubmit="return confirm(<?= h(json_encode($confirmMsg)) ?>);">
+    <input type="hidden" name="action" value="delete">
+    <button class="btn alt">Delete entity</button>
+  </form>
 </section>
 <?php endif; ?>
 
