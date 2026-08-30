@@ -8,6 +8,8 @@ for cheap shared hosting (GoDaddy-style cPanel), not a Node/serverless
 stack. No framework, no build step, no Composer dependency — plain PHP
 with PDO, deployable by copying files.
 
+![Homepage screenshot](docs/homepage.jpg)
+
 ## What this does
 
 - **Public pages** — `index.php` (home), `stories.php` (all stories),
