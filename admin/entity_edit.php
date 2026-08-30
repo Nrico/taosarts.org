@@ -9,6 +9,7 @@ $e = [
     'type' => 'person', 'name' => '', 'slug' => '', 'one_line_id' => '',
     'date_start' => '', 'date_end' => '',
     'coordinates' => '', 'cadence' => '', 'portrait_image_id' => null, 'bio_markdown' => '',
+    'aliases' => '[]', 'keywords' => '[]',
 ];
 if ($id) {
     $stmt = $pdo->prepare('SELECT * FROM entities WHERE id = ?');
@@ -46,11 +47,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $slug = $_POST['slug'] ?: slugify($_POST['name']);
 
+    // Same shape as admin/idea.php's approve_entity — comma-separated input,
+    // JSON column in the DB. These are what api/entities.php exports for
+    // the research agent's matching, so they matter beyond just this form.
+    $toJson = fn($csv) => json_encode(array_values(array_filter(array_map('trim', explode(',', $csv ?? '')))));
+
     $values = [
         $_POST['type'],
         $_POST['name'],
         $slug,
         $_POST['one_line_id'] ?: null,
+        $toJson($_POST['aliases'] ?? ''),
+        $toJson($_POST['keywords'] ?? ''),
         $_POST['date_start'] ?: null,
         $_POST['date_end'] ?: null,
         $_POST['coordinates'] ?: null,
@@ -60,10 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     if ($id) {
-        $stmt = $pdo->prepare('UPDATE entities SET type=?,name=?,slug=?,one_line_id=?,date_start=?,date_end=?,coordinates=?,cadence=?,portrait_image_id=?,bio_markdown=? WHERE id=?');
+        $stmt = $pdo->prepare('UPDATE entities SET type=?,name=?,slug=?,one_line_id=?,aliases=?,keywords=?,date_start=?,date_end=?,coordinates=?,cadence=?,portrait_image_id=?,bio_markdown=? WHERE id=?');
         $values[] = $id;
     } else {
-        $stmt = $pdo->prepare('INSERT INTO entities (type,name,slug,one_line_id,date_start,date_end,coordinates,cadence,portrait_image_id,bio_markdown) VALUES (?,?,?,?,?,?,?,?,?,?)');
+        $stmt = $pdo->prepare('INSERT INTO entities (type,name,slug,one_line_id,aliases,keywords,date_start,date_end,coordinates,cadence,portrait_image_id,bio_markdown) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
     }
     $stmt->execute($values);
     redirect('entities.php');
@@ -85,6 +93,8 @@ $images = $pdo->query('SELECT id, credit_text FROM images ORDER BY created_at DE
       <div class="form-row"><label>Name</label><input name="name" required value="<?= h($e['name']) ?>"></div>
       <div class="form-row"><label>Slug</label><input name="slug" value="<?= h($e['slug']) ?>" placeholder="auto from name if blank"></div>
       <div class="form-row"><label>One-line ID</label><input name="one_line_id" value="<?= h($e['one_line_id']) ?>" placeholder="Short description for cards and profile headers"></div>
+      <div class="form-row"><label>Aliases (comma-separated)</label><input name="aliases" value="<?= h(implode(', ', json_decode($e['aliases'] ?: '[]', true) ?: [])) ?>" placeholder="Other names this is known by"></div>
+      <div class="form-row"><label>Keywords (comma-separated)</label><input name="keywords" value="<?= h(implode(', ', json_decode($e['keywords'] ?: '[]', true) ?: [])) ?>" placeholder="Terms that signal a real connection — used for matching, not shown on the site"></div>
     </div>
     <div>
       <div class="form-row type-field type-person" style="display:none"><label>Born</label><input name="date_start" value="<?= h($e['date_start']) ?>" placeholder="e.g. 1902"></div>

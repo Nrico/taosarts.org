@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // proposed_new_entity is ever turned into a real entities row.
         $slug = $_POST['slug'] ?: slugify($_POST['name']);
         $toJson = fn($csv) => json_encode(array_values(array_filter(array_map('trim', explode(',', $csv)))));
-        $ins = $pdo->prepare('INSERT INTO entities (type,name,slug,one_line_id,keywords) VALUES (?,?,?,?,?)');
-        $ins->execute([$_POST['type'], $_POST['name'], $slug, $_POST['one_line_id'] ?: null, $toJson($_POST['keywords'] ?? '')]);
+        $ins = $pdo->prepare('INSERT INTO entities (type,name,slug,one_line_id,aliases,keywords) VALUES (?,?,?,?,?,?)');
+        $ins->execute([$_POST['type'], $_POST['name'], $slug, $_POST['one_line_id'] ?: null, $toJson($_POST['aliases'] ?? ''), $toJson($_POST['keywords'] ?? '')]);
         $newEntityId = $pdo->lastInsertId();
         $pdo->prepare('UPDATE story_ideas SET matched_entity_id=?, proposed_new_entity=NULL WHERE id=?')->execute([$newEntityId, $id]);
         redirect('idea.php?id=' . $id);
@@ -84,6 +84,7 @@ $proposed = json_decode($idea['proposed_new_entity'] ?: 'null', true);
       </div>
       <div>
         <div class="form-row"><label>One-line ID</label><input name="one_line_id" value="<?= h($proposed['one_line_id'] ?? '') ?>"></div>
+        <div class="form-row"><label>Aliases (comma-separated)</label><input name="aliases" placeholder="Other names this is known by"></div>
         <div class="form-row"><label>Keywords (comma-separated)</label><input name="keywords" value="<?= h(implode(', ', $proposed['keywords'] ?? [])) ?>"></div>
         <button class="btn">Approve &amp; create entity</button>
       </div>

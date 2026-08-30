@@ -21,6 +21,79 @@ function client_ip(): string {
     return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 }
 
+// ---- Bearer-token API auth, shared by every token-protected endpoint ----
+// (api/ingest.php, api/entities.php). Rate-limits and logs failures via
+// api_auth_failures before doing any bcrypt work, same as ingest.php always
+// did — factored out here so the two endpoints can't drift apart.
+
+const API_AUTH_FAIL_WINDOW_MINUTES = 15;
+const API_AUTH_FAIL_LIMIT = 10;
+
+function log_auth_failure(PDO $pdo, string $ip): void {
+    $pdo->prepare('INSERT INTO api_auth_failures (ip_address) VALUES (?)')->execute([$ip]);
+}
+
+function too_many_auth_failures(PDO $pdo, string $ip): bool {
+    $stmt = $pdo->prepare('SELECT COUNT(*) c FROM api_auth_failures WHERE ip_address = ? AND attempted_at > (NOW() - INTERVAL ' . API_AUTH_FAIL_WINDOW_MINUTES . ' MINUTE)');
+    $stmt->execute([$ip]);
+    return (int)$stmt->fetch()['c'] >= API_AUTH_FAIL_LIMIT;
+}
+
+// Shared hosts on Apache+PHP-FPM often strip the Authorization header unless
+// it's explicitly forwarded (see the REQUEST_URI rewrite rule added to
+// .htaccess); check every place it might actually show up.
+function bearer_token(): ?string {
+    $header = null;
+    if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
+        $header = $_SERVER['HTTP_AUTHORIZATION'];
+    } elseif (!empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    } elseif (function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        $header = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+    }
+    if (!$header || !preg_match('/^Bearer\s+(.+)$/i', trim($header), $m)) {
+        return null;
+    }
+    return trim($m[1]);
+}
+
+// Checks the request's bearer token against api_tokens, rate-limiting and
+// logging failures the same way every caller needs. Ends the request itself
+// (via json_response) on any failure — callers only get control back once
+// auth has actually succeeded, and receive the matched token's id.
+function require_api_token(PDO $pdo): int {
+    $ip = client_ip();
+    if (too_many_auth_failures($pdo, $ip)) {
+        json_response(['error' => 'too many failed attempts, try again later'], 429);
+    }
+
+    $token = bearer_token();
+    if (!$token) {
+        log_auth_failure($pdo, $ip);
+        json_response(['error' => 'missing bearer token'], 401);
+    }
+
+    // token_hash is a password_hash() of the plaintext token, so lookup
+    // means checking the presented token against every stored hash — the
+    // table is expected to stay small (one token per agent/integration).
+    $matchedTokenId = null;
+    foreach ($pdo->query('SELECT id, token_hash FROM api_tokens')->fetchAll() as $row) {
+        if (password_verify($token, $row['token_hash'])) {
+            $matchedTokenId = $row['id'];
+            break;
+        }
+    }
+
+    if ($matchedTokenId === null) {
+        log_auth_failure($pdo, $ip);
+        json_response(['error' => 'invalid token'], 401);
+    }
+
+    $pdo->prepare('UPDATE api_tokens SET last_used_at = NOW() WHERE id = ?')->execute([$matchedTokenId]);
+    return $matchedTokenId;
+}
+
 // ---- Public front-end helpers -------------------------------------------
 
 function story_primary_image(PDO $pdo, int $storyId): ?array {
