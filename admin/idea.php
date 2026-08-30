@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // proposed_new_entity is ever turned into a real entities row.
         $slug = $_POST['slug'] ?: slugify($_POST['name']);
         $toJson = fn($csv) => json_encode(array_values(array_filter(array_map('trim', explode(',', $csv)))));
-        $ins = $pdo->prepare('INSERT INTO entities (type,name,slug,one_line_id,aliases,keywords) VALUES (?,?,?,?,?,?)');
-        $ins->execute([$_POST['type'], $_POST['name'], $slug, $_POST['one_line_id'] ?: null, $toJson($_POST['aliases'] ?? ''), $toJson($_POST['keywords'] ?? '')]);
+        $ins = $pdo->prepare('INSERT INTO entities (type,name,slug,one_line_id,aliases,keywords,bio_markdown) VALUES (?,?,?,?,?,?,?)');
+        $ins->execute([$_POST['type'], $_POST['name'], $slug, $_POST['one_line_id'] ?: null, $toJson($_POST['aliases'] ?? ''), $toJson($_POST['keywords'] ?? ''), $_POST['bio_markdown'] ?: null]);
         $newEntityId = $pdo->lastInsertId();
         $pdo->prepare('UPDATE story_ideas SET matched_entity_id=?, proposed_new_entity=NULL WHERE id=?')->execute([$newEntityId, $id]);
         redirect('idea.php?id=' . $id);
@@ -86,6 +86,16 @@ $proposed = json_decode($idea['proposed_new_entity'] ?: 'null', true);
         <div class="form-row"><label>One-line ID</label><input name="one_line_id" value="<?= h($proposed['one_line_id'] ?? '') ?>"></div>
         <div class="form-row"><label>Aliases (comma-separated)</label><input name="aliases" placeholder="Other names this is known by"></div>
         <div class="form-row"><label>Keywords (comma-separated)</label><input name="keywords" value="<?= h(implode(', ', $proposed['keywords'] ?? [])) ?>"></div>
+      </div>
+      <div style="grid-column:1/-1">
+        <div class="form-row"><label>Bio (Markdown)</label>
+          <textarea name="bio_markdown" style="min-height:140px"><?= h($proposed['bio_markdown_draft'] ?? '') ?></textarea>
+          <?php if (!empty($proposed['bio_markdown_draft'])): ?>
+          <p style="color:#685f54;font-size:13px">Drafted by the agent from its source material — for review only, same as the connection note above. Edit or clear it before approving.</p>
+          <?php else: ?>
+          <p style="color:#685f54;font-size:13px">The agent didn't ground a bio for this one (thin source material is expected) — write one yourself, or leave blank and fill it in later from the entity's own edit page.</p>
+          <?php endif; ?>
+        </div>
         <button class="btn">Approve &amp; create entity</button>
       </div>
     </form>
