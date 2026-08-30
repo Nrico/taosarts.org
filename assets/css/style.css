@@ -465,6 +465,16 @@ main{display:block}
   margin-bottom:16px;
 }
 
+/* Base rule was missing entirely — only the mobile override (further down,
+   forcing 1 column) existed, so every two-column admin form was silently
+   rendering as one column on desktop too. */
+.split{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  align-items:start;
+}
+
 label{
   color:var(--ink);
   font-size:13px;
@@ -485,6 +495,19 @@ input,textarea,select{
 
 input::placeholder,textarea::placeholder{color:#8a7f73}
 textarea{min-height:120px}
+
+/* The width:100%/padded-box treatment above is meant for text inputs; a
+   checkbox or radio inheriting it stretches into a full-width bordered box
+   instead of a small control, so it needs its own reset. */
+input[type="checkbox"],input[type="radio"]{
+  width:auto;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:none;
+  margin:0 8px 0 0;
+  vertical-align:middle;
+}
 
 .collection-section{
   padding-top:26px;
