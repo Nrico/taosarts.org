@@ -39,6 +39,13 @@ function materialize_suggested_images(PDO $pdo, array $suggested): array {
     return $urlToId;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete' && $storyId) {
+    // FKs handle cleanup: story_entities/story_images rows -> CASCADE.
+    // Images themselves aren't deleted — they're shared library assets.
+    $pdo->prepare('DELETE FROM stories WHERE id = ?')->execute([$storyId]);
+    redirect('stories.php?deleted=1');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postTitle = trim($_POST['title'] ?? '');
     $dek = trim($_POST['dek'] ?? '');
@@ -257,6 +264,22 @@ $entities = $pdo->query('SELECT id, name, type, slug FROM entities ORDER BY name
     </div>
   </aside>
 </form>
+
+<?php if ($storyId): ?>
+<?php
+$confirmMsg = $story['status'] === 'published'
+    ? "Delete \"{$story['title']}\"? It's live on the site — deleting it removes it immediately. This can't be undone."
+    : "Delete \"{$story['title']}\"? This can't be undone.";
+?>
+<section class="panel" style="margin-top:24px;border-color:#9d2d20">
+  <h2>Delete this story</h2>
+  <p style="color:#685f54;font-size:13px">Images used in it aren't deleted — they stay in the library.</p>
+  <form method="post" onsubmit="return confirm(<?= h(json_encode($confirmMsg)) ?>);">
+    <input type="hidden" name="action" value="delete">
+    <button class="btn alt">Delete story</button>
+  </form>
+</section>
+<?php endif; ?>
 
 <?php require __DIR__ . '/_footer.php'; ?>
 
