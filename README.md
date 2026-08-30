@@ -95,15 +95,9 @@ schema on any environment reachable from the internet** — see
 
 ### Changing the admin password
 
-There's no in-app "change password" screen yet, so do it via
-phpMyAdmin: generate a bcrypt hash for your new password (for example,
-run `php -r "echo password_hash('your-new-password', PASSWORD_DEFAULT), PHP_EOL;"`
-somewhere private — your own machine, not in a shared terminal or
-chat), then in phpMyAdmin run:
-
-```sql
-UPDATE users SET password_hash = '<the hash you generated>' WHERE email = 'admin@taosarts.org';
-```
+Log in with the seeded account, then go to **My account** in the admin
+sidebar (`admin/account.php`) and change the password there — it
+verifies the current password before accepting a new one.
 
 ## Shared hosting notes
 
